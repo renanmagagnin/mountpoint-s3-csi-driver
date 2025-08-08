@@ -18,6 +18,8 @@ import (
 	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	storageframework "k8s.io/kubernetes/test/e2e/storage/framework"
 	admissionapi "k8s.io/pod-security-admission/api"
+
+	"github.com/awslabs/mountpoint-s3-csi-driver/pkg/driver/node"
 )
 
 const agentNotReadyTaintKey = "s3.csi.aws.com/agent-not-ready"
@@ -93,12 +95,15 @@ func (t *s3CSITaintRemovalTestSuite) DefineTests(driver storageframework.TestDri
 	}
 
 	FDescribe("Taint Removal", Ordered, func() {
+		BeforeEach(func(ctx context.Context) {
+			framework.Logf("Waiting 1 minute for any existing taint watchers to timeout")
+			time.Sleep(node.TaintWatcherDuration)
+		})
+
 		It("should remove agent-not-ready taint and allow workload scheduling", func(ctx context.Context) {
 			// 1. Get a node where CSI driver is running
 			node := getCSIDriverNode(ctx, f)
 			framework.Logf("Selected node %s for taint removal test", node.Name)
-
-			time.Sleep(10 * time.Second)
 
 			// 2. Apply the taint to the node
 			err := applyAgentNotReadyTaint(ctx, f.ClientSet, node.Name)
@@ -106,8 +111,6 @@ func (t *s3CSITaintRemovalTestSuite) DefineTests(driver storageframework.TestDri
 			deferCleanup(func(ctx context.Context) error {
 				return removeAgentNotReadyTaint(ctx, f.ClientSet, node.Name)
 			})
-
-			time.Sleep(20 * time.Second)
 
 			// 3. Verify taint was actually applied
 			framework.Logf("Verifying taint was applied to node %s", node.Name)
@@ -153,8 +156,6 @@ func (t *s3CSITaintRemovalTestSuite) DefineTests(driver storageframework.TestDri
 			deferCleanup(func(ctx context.Context) error {
 				return removeAgentNotReadyTaint(ctx, f.ClientSet, node.Name)
 			})
-
-			time.Sleep(10 * time.Second)
 
 			// 2. Verify taint was actually applied
 			framework.Logf("Verifying taint was applied to node %s", node.Name)
@@ -240,7 +241,7 @@ func applyAgentNotReadyTaint(ctx context.Context, client clientset.Interface, no
 	// Add the taint
 	newTaint := v1.Taint{
 		Key:    agentNotReadyTaintKey,
-		Effect: v1.TaintEffectNoSchedule,
+		Effect: v1.TaintEffectNoExecute,
 	}
 	node.Spec.Taints = append(node.Spec.Taints, newTaint)
 
