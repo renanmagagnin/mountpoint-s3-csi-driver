@@ -9,7 +9,9 @@ image:
   # Our regional ECR repositories are labelled `eks/aws-s3-csi-driver`.
   # See https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html for the per-region registry list.
   # Example: `602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/aws-s3-csi-driver` for us-east-1.
-  repository: public.ecr.aws/mountpoint-s3-csi-driver/aws-mountpoint-s3-csi-driver
+  # TESTING: Using personal ECR for verification testing
+  repository: public.ecr.aws/u6i4q9x4/aws-mountpoint-s3-csi-driver
+  # repository: public.ecr.aws/mountpoint-s3-csi-driver/aws-mountpoint-s3-csi-driver
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v2.3.0"

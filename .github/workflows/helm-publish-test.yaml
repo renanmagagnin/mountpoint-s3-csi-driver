@@ -1,0 +1,46 @@
+name: Helm publish (TEST)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag referencing commit to test verification (e.g., v2.3.0)"
+        required: true
+        default: "v2.3.0"
+
+jobs:
+  test-verification:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          # Production account (211164257204) where public ECR images are published
+          # Requires IAM role with ecr-public:DescribeImages permission
+          role-to-assume: ${{ vars.PROD_ECR_READ_ROLE }}
+          aws-region: us-east-1
+      - name: Verify all images exist before publishing
+        run: |
+          ./scripts/verify-helm-images.sh charts/aws-mountpoint-s3-csi-driver
+      - name: Test Summary
+        if: success()
+        run: |
+          echo "✅ SUCCESS: Image verification passed!"
+          echo "The workflow would proceed to publish the Helm chart."
+          echo ""
+          echo "Next steps:"
+          echo "1. Review the verification output above"
+          echo "2. If everything looks good, the changes are ready to merge"
+          echo "3. The main repository will need PROD_ECR_READ_ROLE configured"
