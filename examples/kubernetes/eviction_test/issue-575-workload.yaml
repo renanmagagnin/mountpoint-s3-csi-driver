@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cache-filler
+  namespace: mp-eviction-test
+spec:
+  containers:
+    - name: filler
+      image: ubuntu:22.04
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          echo "Starting cache fill test..."
+          
+          # Read files repeatedly to fill cache
+          while true; do
+            echo "Reading files to fill cache..."
+            for file in /data/testdata/*.bin; do
+              if [ -f "$file" ]; then
+                echo "Reading $file"
+                cat "$file" > /dev/null
+              fi
+            done
+            echo "Completed one pass, sleeping 5s..."
+            sleep 5
+          done
+      volumeMounts:
+        - name: s3-storage
+          mountPath: /data
+      resources:
+        limits:
+          ephemeral-storage: 100Mi  # Pod-level ephemeral storage limit
+        requests:
+          ephemeral-storage: 50Mi
+  volumes:
+    - name: s3-storage
+      persistentVolumeClaim:
+        claimName: s3-pvc-eviction-test
